@@ -5,7 +5,7 @@ A complete observability solution using [AWS Distro for OpenTelemetry (ADOT)](ht
 ## Architecture
 
 This project demonstrates:
-- **Local testing** - using Docker compose, ADOT collector to ship logs, traces and metrics to Amazon CloudWatch Logs, AWS X-Ray and Prometheus container instance.
+- **Local testing** - using Docker compose, ADOT collector to ship logs, traces and metrics to Amazon CloudWatch Logs, AWS X-Ray and Prometheus container instance respectively.
 
 - **AWS deployment** - Deployment to AWS that covers using ADOT side car pattern along with your application in an ECS Fargate task. The ADOT side car pushes the received metrics to an Amazon Managed Service for Prometheus workspace and they are further visualized using Amazon Managed Grafana instance. The traces are shipped to AWS X-Ray whereas application and ADOT side car logs are pushed to Amazon CloudWatch Logs with the help of ECS native log driver - awslogs.
 
