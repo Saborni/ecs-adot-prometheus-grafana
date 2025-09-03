@@ -6,10 +6,12 @@ Parameters:
   ContainerImage:
     Type: String
     Description: Replace the docker image to run in the ECS service
+    # Replace the default image with your instrumented application image
     Default: "0123456789.dkr.ecr.us-east-1.amazonaws.com/zap-app:1.0"
   OtelContainerImage:
     Type: String
     Description: ADOT Collector Image
+    # Replace the with the public ADOT collector image or your customized collector image
     Default: "0123456789.dkr.ecr.us-east-1.amazonaws.com/aws-otel-collector:v0.44.0"
   VpcStackName:
     Type: String
