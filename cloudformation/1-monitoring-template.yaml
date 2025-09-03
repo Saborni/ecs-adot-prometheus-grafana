@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Monitoring stack with Amazon Managed Prometheus and Grafana
+
+Parameters:
+  VpcStackName:
+    Type: String
+    Description: Name of the VPC stack to import values from
+    Default: "vpc-alb-stack"
+
+Resources:
+  # Amazon Managed Prometheus
+  PrometheusWorkspace:
+    Type: AWS::APS::Workspace
+    Properties:
+      Alias: !Sub ${AWS::StackName}-prometheus
+  
+  # Amazon Managed Grafana Role
+  AmazonGrafanaWorkspaceIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: AmazonManagedGrafanaWorkspaceIAMRole-1
+      Path: '/service-role/'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonGrafanaCloudWatchAccess'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - grafana.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: AmazonManagedGrafanaWorkspaceIAMRolePolicy1
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AmazonGrafanaPrometheusPolicyStatement1
+                Effect: Allow
+                Action:
+                  - 'aps:ListWorkspaces'
+                  - 'aps:DescribeWorkspace'
+                  - 'aps:QueryMetrics'
+                  - 'aps:GetLabels'
+                  - 'aps:GetSeries'
+                  - 'aps:GetMetricMetadata'
+                Resource: '*'
+
+  # Grafana Security Group
+  GrafanaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Grafana workspace
+      VpcId: 
+        Fn::ImportValue: !Sub ${VpcStackName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.100.0.0/16
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.100.0.0/16
+              
+  # Amazon Managed Grafana
+  GrafanaWorkspace:
+    Type: AWS::Grafana::Workspace
+    Properties:
+      Name: !Sub ${AWS::StackName}-grafana
+      AccountAccessType: CURRENT_ACCOUNT
+      Description: Amazon Grafana Workspace
+      AuthenticationProviders:
+        - AWS_SSO
+      PermissionType: SERVICE_MANAGED
+      GrafanaVersion: '10.4'
+      DataSources:
+        - PROMETHEUS
+      RoleArn: !GetAtt AmazonGrafanaWorkspaceIAMRole.Arn
+      VpcConfiguration:
+        SecurityGroupIds:
+          - !Ref GrafanaSecurityGroup
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnet1
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnet2
+
+Outputs:
+  PrometheusWorkspaceId:
+    Description: ID of the Prometheus workspace
+    Value: !Ref PrometheusWorkspace
+    Export:
+      Name: !Sub ${AWS::StackName}-PrometheusWorkspaceId
+  PrometheusEndpoint:
+    Description: Remote write endpoint of the Prometheus workspace
+    Value: !GetAtt PrometheusWorkspace.PrometheusEndpoint
+    Export:
+      Name: !Sub ${AWS::StackName}-PrometheusEndpoint
+  GrafanaWorkspaceId:
+    Description: ID of the Grafana workspace
+    Value: !Ref GrafanaWorkspace
+    Export:
+      Name: !Sub ${AWS::StackName}-GrafanaWorkspaceId
+  GrafanaWorkspaceEndpoint:
+    Description: Endpoint URL of the Grafana workspace
+    Value: !GetAtt GrafanaWorkspace.Endpoint
+    Export:
+      Name: !Sub ${AWS::StackName}-GrafanaWorkspaceEndpoint

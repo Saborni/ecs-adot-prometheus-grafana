@@ -1,0 +1,52 @@
+extensions:
+  health_check:
+  sigv4auth:
+    region: ${env:AWS_REGION}
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch/traces:
+    timeout: 1s
+    send_batch_size: 1
+  batch/metrics:
+    timeout: 60s
+  batch/logs:
+    timeout: 5s
+    send_batch_size: 100
+
+exporters:
+  awsxray:
+  prometheusremotewrite:
+    endpoint: ${env:AWS_PROMETHEUS_ENDPOINT}
+    # auth:
+    #   authenticator: sigv4auth
+    resource_to_telemetry_conversion:
+      enabled: true
+  awscloudwatchlogs:
+    log_group_name: "/aws/ecs/zap-adot-logs"
+    log_stream_name: "zap-adot-stream"
+    region: ${env:AWS_REGION}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch/traces]
+      exporters: [awsxray]
+    metrics/application:
+      receivers: [otlp]
+      processors: [batch/metrics]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [batch/logs]
+      exporters: [awscloudwatchlogs]
+
+  extensions: [health_check, sigv4auth]

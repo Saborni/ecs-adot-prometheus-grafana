@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  zap-app:
+    build: ../zap-app
+    ports:
+      - "5000:5000"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://adot-collector:4317
+    networks:
+      - monitoring
+
+  adot-collector:
+    image: public.ecr.aws/aws-observability/aws-otel-collector:v0.44.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+    - ./adot-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_PROMETHEUS_ENDPOINT=http://prometheus:9090/api/v1/write
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    command: ["--config.file=/etc/prometheus/prometheus.yml","--web.enable-remote-write-receiver"]
+    volumes:
+    - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
